@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timer 1 Menit - Mode Videotron</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #1634a7;
+            color: #ffffff;
+            font-family: 'Roboto Mono', monospace;
+            /* Menyembunyikan kursor mouse di seluruh halaman */
+            cursor: none;
+            /* REVISI: Mencegah seleksi teks */
+            user-select: none;
+            -webkit-user-select: none; /* Safari */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* IE10+ */
+        }
+        #timer-display {
+            font-size: clamp(8rem, 25vw, 22rem); /* Ukuran font responsif, sedikit lebih besar */
+            line-height: 1;
+            font-weight: 700;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+        .timer-running {
+            color: #ffd2ad; /* Oranye/Kuning terang */
+        }
+        .timer-warning {
+            color: #ef4444 !important; /* Merah terang (prioritas tertinggi) */
+            animation: pulse-warning 1s infinite;
+        }
+        @keyframes pulse-warning {
+            50% { opacity: 0.7; transform: scale(1.02); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- Kontainer Utama -->
+    <div class="w-full max-w-6xl mx-auto flex flex-col items-center text-center">
+        
+        <!-- Display Timer -->
+        <main id="timer-display">
+            01:00
+        </main>
+
+        <!-- Tombol Kontrol Dihilangkan dari Tampilan -->
+        <footer class="hidden">
+            <button id="start-button">MULAI</button>
+            <button id="stop-button">BERHENTI</button>
+            <button id="reset-button">RESET</button>
+        </footer>
+
+    </div>
+
+    <script>
+        // --- PENGATURAN TIMER ---
+        const TIME_LIMIT = 60;
+        const WARNING_TIME = 10;
+
+        // --- ELEMEN DOM ---
+        const timerDisplay = document.getElementById('timer-display');
+
+        // --- VARIABEL KONTROL ---
+        let timeLeft = TIME_LIMIT;
+        let timerInterval = null;
+        let isTimerRunning = false;
+        let audioContext;
+
+        // --- FUNGSI AUDIO ---
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playBeep(isFinalBeep = false) {
+            if (!audioContext) return;
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + (isFinalBeep ? 0.5 : 0.2));
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(isFinalBeep ? 1200 : 900, audioContext.currentTime);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + (isFinalBeep ? 0.5 : 0.2));
+        }
+
+        // --- FUNGSI TIMER ---
+        function updateDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerDisplay.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            
+            if (timeLeft <= WARNING_TIME && timeLeft > 0) {
+                timerDisplay.classList.add('timer-warning');
+            } else {
+                timerDisplay.classList.remove('timer-warning');
+            }
+        }
+
+        function startTimer() {
+            if (isTimerRunning) return;
+            initAudio();
+            isTimerRunning = true;
+            timerDisplay.classList.add('timer-running');
+            
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateDisplay();
+
+                if (timeLeft <= WARNING_TIME && timeLeft > 0) {
+                    playBeep();
+                }
+
+                if (timeLeft <= 0) {
+                    stopTimer(true); // Hentikan karena waktu habis
+                    playBeep(true);
+                    timerDisplay.classList.add('timer-warning');
+                }
+            }, 1000);
+        }
+
+        function stopTimer(isFinished = false) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+            if (!isFinished) {
+                isTimerRunning = false;
+            }
+        }
+
+        function resetTimer() {
+            stopTimer();
+            isTimerRunning = false;
+            timeLeft = TIME_LIMIT;
+            timerDisplay.classList.remove('timer-running', 'timer-warning');
+            updateDisplay();
+        }
+
+        // --- KONTROL KEYBOARD UNTUK OPERATOR ---
+        function handleKeyPress(event) {
+            if (event.code === 'Space') {
+                event.preventDefault(); // Mencegah scrolling halaman
+                if (isTimerRunning) {
+                    stopTimer();
+                } else {
+                    if(timeLeft > 0) {
+                        startTimer();
+                    }
+                }
+            }
+
+            if (event.code === 'KeyR') {
+                resetTimer();
+            }
+            
+            if (event.code === 'KeyF') {
+                 if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                    }
+                }
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+        document.addEventListener('keydown', handleKeyPress);
+        document.addEventListener('DOMContentLoaded', updateDisplay);
+    </script>
+</body>
+</html>

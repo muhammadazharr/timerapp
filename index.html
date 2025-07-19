@@ -87,7 +87,7 @@
             oscillator.connect(gainNode);
             gainNode.connect(audioContext.destination);
             
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.setValueAtTime(1.0, audioContext.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + (isFinalBeep ? 0.5 : 0.2));
 
             oscillator.type = 'sine';
